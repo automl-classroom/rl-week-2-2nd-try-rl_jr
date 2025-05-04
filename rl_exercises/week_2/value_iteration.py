@@ -47,12 +47,12 @@ class ValueIteration(AbstractAgent):
         self.seed = seed
 
         # TODO: Extract MDP components from the environment
-        self.S = None
-        self.A = None
-        self.T = None
-        self.R_sa = None
-        self.n_states = None
-        self.n_actions = None
+        self.S = env.states
+        self.A = env.actions
+        self.T = env.T
+        self.R_sa = env.get_reward_per_action()
+        self.n_states = env.observation_space.n
+        self.n_actions = env.action_space.n
 
         # placeholders
         self.V = np.zeros(self.n_states, dtype=float)
@@ -63,6 +63,8 @@ class ValueIteration(AbstractAgent):
         """Run value iteration and store the resulting V and π."""
         if self.policy_fitted:
             return
+        
+        # TODO: Call value_iteration() with extracted MDP components
 
         V_opt, pi_opt = value_iteration(
             T=self.T,
@@ -71,7 +73,9 @@ class ValueIteration(AbstractAgent):
             seed=self.seed,
         )
 
-        # TODO: Call value_iteration() with extracted MDP components
+        self.V = V_opt
+        self.pi = pi_opt
+        self.policy_fitted = True
 
     def predict_action(
         self,
@@ -84,7 +88,7 @@ class ValueIteration(AbstractAgent):
             self.update_agent()
 
         # TODO: Return action from learned policy
-        raise NotImplementedError("predict_action() is not implemented.")
+        return self.pi[observation], {}
 
 
 def value_iteration(
@@ -124,11 +128,20 @@ def value_iteration(
     """
     n_states, n_actions = R_sa.shape
     V = np.zeros(n_states, dtype=float)
-    # rng = np.random.default_rng(seed)  uncomment this
-    pi = None
+    rng = np.random.default_rng(seed)  # uncomment this
+    pi = np.ndarray(n_states)
 
     # TODO: update V using the Q values until convergence
+    improvement = np.inf
+    while improvement > epsilon:
+        improvement = 0
+        for s in  range(n_states):
+            v_old = V[s]
+            V[s] = max(R_sa[s, a] + gamma * sum([T[s, a, s_next] * V[s_next] for s_next in range(n_states)]) for a in range(n_actions))
+            improvement = max(improvement, V[s] - v_old)
 
     # TODO: Extract the greedy policy from V and update pi
+    for s in range(n_states):
+        pi[s] = np.argmax([R_sa[s, a] + gamma * sum([T[s, a, s_next] * V[s_next] for s_next in range(n_states)])] for a in range(n_actions))
 
     return V, pi
